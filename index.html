@@ -76,7 +76,6 @@
       font-size: 16px;
     }
 
-    /* Celebration overlay */
     #celebration{
       display: none;
       position: fixed;
@@ -146,14 +145,22 @@
   </div>
 
   <script>
-  (() => {
+    // If you do NOT see this alert, the browser is not running your JS at all.
+    alert("JS loaded ✅ (if you see this, the script is running)");
+
     window.addEventListener("DOMContentLoaded", () => {
+      console.log("DOM ready ✅");
+
       const yesBox = document.getElementById("yesBox");
       const noBox  = document.getElementById("noBox");
       const container = document.getElementById("container");
       const celebration = document.getElementById("celebration");
 
-      if (!yesBox || !noBox || !container || !celebration) return;
+      if (!yesBox || !noBox || !container || !celebration) {
+        alert("Missing elements — check IDs.");
+        console.error({ yesBox, noBox, container, celebration });
+        return;
+      }
 
       const yesLines = [
         "Way try again.",
@@ -178,13 +185,11 @@
         "Fine how about this?"
       ];
 
-      let yesIdx = 0;
-      let noIdx  = 0;
-      let yesArmed = false;
-      let noArmed  = false;
+      let yesIdx = 0, noIdx = 0;
+      let yesArmed = false, noArmed = false;
       let done = false;
 
-      const canHover = window.matchMedia && window.matchMedia("(hover: hover)").matches;
+      const canHover = window.matchMedia("(hover: hover)").matches;
 
       function moveElement(el){
         const padding = 12;
@@ -239,28 +244,21 @@
         `;
       }
 
-      // Advance-on-hover (desktop) OR advance-on-tap (mobile) until last line,
-      // then allow a normal click to trigger success.
-
-      function advanceYes(e){
+      function advanceYes(){
         if (done) return;
-        if (yesArmed) return;
 
-        // For pointer taps, stop it from immediately becoming a "click" advance too
-        if (e && e.type !== "mouseenter") {
-          e.preventDefault();
-          e.stopPropagation();
+        if (yesArmed) {
+          success();
+          return;
         }
 
         yesBox.textContent = yesLines[yesIdx];
 
-        if (yesIdx === yesLines.length - 1) {
+        if (yesIdx === yesLines.length - 1){
           yesArmed = true;
-
           yesBox.style.position = "absolute";
           yesBox.style.left = "0px";
           yesBox.style.top  = "0px";
-          yesBox.style.cursor = "pointer";
           return;
         }
 
@@ -268,25 +266,22 @@
         moveElement(yesBox);
       }
 
-      function advanceNo(e){
+      function advanceNo(){
         if (done) return;
-        if (noArmed) return;
 
-        if (e && e.type !== "mouseenter") {
-          e.preventDefault();
-          e.stopPropagation();
+        if (noArmed) {
+          success();
+          return;
         }
 
         noBox.textContent = noLines[noIdx];
 
-        if (noIdx === noLines.length - 1) {
+        if (noIdx === noLines.length - 1){
           noArmed = true;
-
           noBox.style.background = "#1d8f3a";
           noBox.style.position = "absolute";
           noBox.style.left = "290px";
           noBox.style.top  = "0px";
-          noBox.style.cursor = "pointer";
           return;
         }
 
@@ -294,33 +289,18 @@
         moveElement(noBox);
       }
 
-      function yesFinalClick(){
-        if (done) return;
-        if (yesArmed) success();
-      }
-
-      function noFinalClick(){
-        if (done) return;
-        if (noArmed) success();
-      }
-
+      // Desktop: dodge on hover
       if (canHover){
         yesBox.addEventListener("mouseenter", advanceYes);
         noBox.addEventListener("mouseenter", advanceNo);
       }
 
-      yesBox.addEventListener("pointerdown", advanceYes);
-      noBox.addEventListener("pointerdown", advanceNo);
+      // Mobile: dodge on tap/click (no preventDefault shenanigans)
+      yesBox.addEventListener("click", advanceYes);
+      noBox.addEventListener("click", advanceNo);
 
-      yesBox.addEventListener("click", yesFinalClick);
-      noBox.addEventListener("click", noFinalClick);
-
-      window.addEventListener("resize", () => {
-        if (yesBox.style.position === "fixed") moveElement(yesBox);
-        if (noBox.style.position === "fixed") moveElement(noBox);
-      });
+      console.log("Listeners attached ✅", { canHover });
     });
-  })();
   </script>
 </body>
 </html>
