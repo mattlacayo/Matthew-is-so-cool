@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Question</title>
+
+<style>
+  body{
+    font-family: "Times New Roman", Times, serif;
+    background: #ffffff;
+    color: #000000;
+    margin: 0;
+    height: 100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+
+  .container{
+    width: 760px;
+    max-width: calc(100vw - 40px);
+    border: 1px solid #000;
+    padding: 44px;
+    position: relative;
+  }
+
+  .question{
+    font-size: 26px;
+    line-height: 1.35;
+    margin: 0;
+    font-weight: normal;
+  }
+
+  .boxes{
+    margin-top: 34px;
+    position: relative;
+    height: 70px;
+  }
+
+  .box{
+    font-family: "Times New Roman", Times, serif;
+    font-size: 18px;
+    border: 1px solid #000;
+    padding: 16px 18px;
+    width: 220px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  #yesBox{
+    background: #1d8f3a;
+    color: #ffffff;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  #noBox{
+    background: #c51f1f;
+    color: #ffffff;
+    position: absolute;
+    left: 250px;
+    top: 0;
+  }
+
+  .hint{
+    margin-top: 26px;
+    border-top: 1px solid #000;
+    padding-top: 18px;
+    font-size: 16px;
+  }
+
+  /* Success flashing */
+  .flash{
+    animation: flashBg 180ms linear infinite;
+  }
+  @keyframes flashBg{
+    0% { background: #ffffff; color: #000000; }
+    50% { background: #000000; color: #ffffff; }
+    100% { background: #ffffff; color: #000000; }
+  }
+
+  .success{
+    font-size: 28px;
+    line-height: 1.25;
+    font-weight: normal;
+    margin: 0;
+  }
+</style>
+</head>
+
+<body>
+  <div class="container" id="container">
+    <p class="question" id="question">
+      Are we hanging out soon? We haven't had a proper catch up since we got back from break. Freak.
+    </p>
+
+    <div class="boxes" id="boxes">
+      <div class="box" id="yesBox">Yes</div>
+      <div class="box" id="noBox">No</div>
+    </div>
+
+    <div class="hint" id="hint">
+      Choose wisely.
+    </div>
+  </div>
+
+<script>
+  const yesBox = document.getElementById("yesBox");
+  const noBox  = document.getElementById("noBox");
+  const container = document.getElementById("container");
+  const boxes = document.getElementById("boxes");
+
+  const yesLines = [
+    "Way try again.",
+    "Oop, you were a little slow there",
+    "Damn Jacob tf?",
+    "Is this why ur flag football team lost the game?",
+    "Okay last one",
+    "SIKE",
+    "Okay jk really last one promise."
+  ];
+
+  const noLines = [
+    "Wait wtf?",
+    "You better not be trying to hit No",
+    "WHAT DO YOU MEAN YOU DOn'T WANNA HANG OUT???",
+    "JACOB HUH",
+    "Oh my god.",
+    "No whatever it's fine",
+    "I'm fine. I get it.",
+    "Okay but fr tho stop playing.",
+    "Green box is what u meant to hit.",
+    "Fine how about this?"
+  ];
+
+  let yesIdx = 0;
+  let noIdx = 0;
+  let yesUnlocked = false;
+  let done = false;
+
+  function moveElement(el){
+    const padding = 12;
+    const w = el.offsetWidth || 220;
+    const h = el.offsetHeight || 60;
+
+    const maxX = Math.max(padding, window.innerWidth - w - padding);
+    const maxY = Math.max(padding, window.innerHeight - h - padding);
+
+    const x = Math.floor(Math.random() * maxX);
+    const y = Math.floor(Math.random() * maxY);
+
+    el.style.position = "fixed";
+    el.style.left = x + "px";
+    el.style.top  = y + "px";
+  }
+
+  function success(){
+    if (done) return;
+    done = true;
+
+    document.body.classList.add("flash");
+
+    // Replace the container content with the success message
+    container.innerHTML = `
+      <p class="success">
+        WOOOHOOOO! Lmk when ur free. Btw this is how I used my study break (I'm going to crash out on anatomy lab studying).
+      </p>
+    `;
+
+    // Keep it centered while flashing
+    container.style.border = "1px solid currentColor";
+  }
+
+  // YES behavior:
+  // - Until final line, it always escapes and cycles text.
+  // - After final line has been shown and they try again, it registers YES.
+  function handleYesAttempt(e){
+    if (done) return;
+
+    // If unlocked, allow it to register YES
+    if (yesUnlocked){
+      // Let it "be clicked"
+      success();
+      return;
+    }
+
+    // Otherwise block any click/tap and escape
+    if (e){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    yesBox.textContent = yesLines[yesIdx];
+
+    // If we just displayed the LAST line, unlock for next attempt
+    if (yesIdx === yesLines.length - 1){
+      yesUnlocked = true;
+    } else {
+      yesIdx++;
+    }
+
+    moveElement(yesBox);
+  }
+
+  // NO behavior:
+  // - Always escapes and cycles.
+  // - On the final NO line, it immediately converts into a YES outcome and registers YES.
+  function handleNoAttempt(e){
+    if (done) return;
+
+    if (e){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    noBox.textContent = noLines[noIdx];
+
+    // If last NO line, convert and immediately register YES
+    if (noIdx === noLines.length - 1){
+      // Turn the red box into a green "Yes" box feel (as requested)
+      noBox.style.background = "#1d8f3a";
+      noBox.textContent = yesLines[yesLines.length - 1]; // a "Yes green box response"
+      success(); // registers as final Yes hit
+      return;
+    }
+
+    noIdx++;
+    moveElement(noBox);
+  }
+
+  // Make both boxes dodge on hover (desktop) and on tap/click (mobile)
+  // Use pointerdown to beat the click event on mobile reliably.
+  const yesEvents = ["mouseenter", "pointerdown", "touchstart", "mousedown", "click"];
+  yesEvents.forEach(evt => {
+    yesBox.addEventListener(evt, handleYesAttempt, evt === "touchstart" ? { passive:false } : undefined);
+  });
+
+  const noEvents = ["mouseenter", "pointerdown", "touchstart", "mousedown", "click"];
+  noEvents.forEach(evt => {
+    noBox.addEventListener(evt, handleNoAttempt, evt === "touchstart" ? { passive:false } : undefined);
+  });
+
+  // Keep dodging elements on screen after resize
+  window.addEventListener("resize", () => {
+    // Only reposition if they’ve escaped layout (position fixed)
+    if (yesBox.style.position === "fixed") moveElement(yesBox);
+    if (noBox.style.position === "fixed") moveElement(noBox);
+  });
+</script>
+</body>
+</html>
