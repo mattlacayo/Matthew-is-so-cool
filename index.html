@@ -24,6 +24,8 @@
     border: 1px solid #000;
     padding: 44px;
     position: relative;
+    background: #ffffff; /* keeps text readable */
+    z-index: 2;
   }
 
   .question{
@@ -44,7 +46,7 @@
     font-size: 18px;
     border: 1px solid #000;
     padding: 16px 18px;
-    width: 220px;
+    width: 260px;
     text-align: center;
     cursor: pointer;
     user-select: none;
@@ -63,7 +65,7 @@
     background: #c51f1f;
     color: #ffffff;
     position: absolute;
-    left: 250px;
+    left: 290px;
     top: 0;
   }
 
@@ -74,52 +76,88 @@
     font-size: 16px;
   }
 
-  /* Success flashing */
-  .flash{
-    animation: flashBg 180ms linear infinite;
-  }
-  @keyframes flashBg{
-    0% { background: #ffffff; color: #000000; }
-    50% { background: #000000; color: #ffffff; }
-    100% { background: #ffffff; color: #000000; }
+  /* Celebration overlay (does not obscure center text) */
+  #celebration{
+    display: none;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1; /* behind the container, above body */
   }
 
-  .success{
+  .spinBox{
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    border: 2px solid #000;
+    background: transparent;
+    opacity: 0.85;
+    animation: spin 900ms linear infinite;
+  }
+
+  @keyframes spin{
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .floatCircle{
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #000;
+    border-radius: 999px;
+    opacity: 0.65;
+    animation: drift 2600ms linear infinite;
+  }
+
+  @keyframes drift{
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-22px); }
+    100% { transform: translateY(0px); }
+  }
+
+  .successText{
     font-size: 28px;
     line-height: 1.25;
     font-weight: normal;
     margin: 0;
   }
+
+  .successWrap{
+    text-align: center;
+  }
 </style>
 </head>
 
 <body>
+  <div id="celebration"></div>
+
   <div class="container" id="container">
     <p class="question" id="question">
       Are we hanging out soon? We haven't had a proper catch up since we got back from break. Freak.
     </p>
 
-    <div class="boxes" id="boxes">
+    <div class="boxes">
       <div class="box" id="yesBox">Yes</div>
       <div class="box" id="noBox">No</div>
     </div>
 
-    <div class="hint" id="hint">
-      Choose wisely.
-    </div>
+    <div class="hint" id="hint">Choose wisely.</div>
   </div>
 
 <script>
   const yesBox = document.getElementById("yesBox");
   const noBox  = document.getElementById("noBox");
   const container = document.getElementById("container");
-  const boxes = document.getElementById("boxes");
+  const celebration = document.getElementById("celebration");
 
   const yesLines = [
-    "Way try again.",
+    "Wait try again.",
     "Oop, you were a little slow there",
+    "lol.",
     "Damn Jacob tf?",
     "Is this why ur flag football team lost the game?",
+    "Because ur sloooowww?"
     "Okay last one",
     "SIKE",
     "Okay jk really last one promise."
@@ -140,12 +178,12 @@
 
   let yesIdx = 0;
   let noIdx = 0;
-  let yesUnlocked = false;
+  let yesArmedForFinalClick = false; // shows final line and stops dodging
   let done = false;
 
   function moveElement(el){
     const padding = 12;
-    const w = el.offsetWidth || 220;
+    const w = el.offsetWidth || 260;
     const h = el.offsetHeight || 60;
 
     const maxX = Math.max(padding, window.innerWidth - w - padding);
@@ -159,73 +197,113 @@
     el.style.top  = y + "px";
   }
 
+  function buildCelebration(){
+    celebration.innerHTML = "";
+    celebration.style.display = "block";
+
+    // Put spinning boxes around the perimeter
+    const boxes = 20;
+    for (let i=0; i<boxes; i++){
+      const b = document.createElement("div");
+      b.className = "spinBox";
+      b.style.left = (Math.random()*100) + "vw";
+      b.style.top  = (Math.random()*100) + "vh";
+      b.style.animationDuration = (600 + Math.random()*1200) + "ms";
+      b.style.opacity = (0.35 + Math.random()*0.55).toFixed(2);
+      celebration.appendChild(b);
+    }
+
+    // Floating circles (slower)
+    const circles = 26;
+    for (let i=0; i<circles; i++){
+      const c = document.createElement("div");
+      c.className = "floatCircle";
+      c.style.left = (Math.random()*100) + "vw";
+      c.style.top  = (Math.random()*100) + "vh";
+      c.style.animationDuration = (1800 + Math.random()*2200) + "ms";
+      c.style.opacity = (0.25 + Math.random()*0.55).toFixed(2);
+      celebration.appendChild(c);
+    }
+  }
+
   function success(){
     if (done) return;
     done = true;
 
-    document.body.classList.add("flash");
+    buildCelebration();
 
-    // Replace the container content with the success message
     container.innerHTML = `
-      <p class="success">
-        WOOOHOOOO! Lmk when ur free. Btw this is how I used my study break (I'm going to crash out on anatomy lab studying).
-      </p>
+      <div class="successWrap">
+        <p class="successText">
+          WOOOHOOOO! Lmk when ur free. Btw this is how I used my study break (I'm going to crash out on anatomy lab studying).
+        </p>
+      </div>
     `;
-
-    // Keep it centered while flashing
-    container.style.border = "1px solid currentColor";
   }
 
-  // YES behavior:
-  // - Until final line, it always escapes and cycles text.
-  // - After final line has been shown and they try again, it registers YES.
-  function handleYesAttempt(e){
+  // YES:
+  // - Until final line: any attempt (hover/tap/click) makes it dodge and cycle lines.
+  // - When it reaches the final line: it displays final line and stops dodging.
+  // - Only a real CLICK after that registers success.
+  function yesAttemptNonClick(e){
     if (done) return;
 
-    // If unlocked, allow it to register YES
-    if (yesUnlocked){
-      // Let it "be clicked"
-      success();
+    // If we're armed for final click, hovering/tapping should NOT trigger success or movement.
+    // We want them to actually click it.
+    if (yesArmedForFinalClick) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
       return;
     }
 
-    // Otherwise block any click/tap and escape
-    if (e){
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    if (e) { e.preventDefault(); e.stopPropagation(); }
 
     yesBox.textContent = yesLines[yesIdx];
 
-    // If we just displayed the LAST line, unlock for next attempt
+    // If this is the last line, arm it and STOP dodging.
     if (yesIdx === yesLines.length - 1){
-      yesUnlocked = true;
-    } else {
-      yesIdx++;
+      yesArmedForFinalClick = true;
+
+      // Put it back into the normal slot (so it’s clearly clickable)
+      yesBox.style.position = "absolute";
+      yesBox.style.left = "0px";
+      yesBox.style.top = "0px";
+      yesBox.style.cursor = "pointer";
+      return;
     }
 
+    yesIdx++;
     moveElement(yesBox);
   }
 
-  // NO behavior:
-  // - Always escapes and cycles.
-  // - On the final NO line, it immediately converts into a YES outcome and registers YES.
-  function handleNoAttempt(e){
+  function yesFinalClick(e){
     if (done) return;
 
-    if (e){
-      e.preventDefault();
-      e.stopPropagation();
+    // Only count if armed
+    if (!yesArmedForFinalClick){
+      // If they clicked early, treat like an attempt and dodge
+      yesAttemptNonClick(e);
+      return;
     }
+
+    // This is the actual registered Yes.
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    success();
+  }
+
+  // NO:
+  // - Always dodges and cycles.
+  // - On final NO line, it converts and registers YES immediately.
+  function noAttempt(e){
+    if (done) return;
+    if (e) { e.preventDefault(); e.stopPropagation(); }
 
     noBox.textContent = noLines[noIdx];
 
-    // If last NO line, convert and immediately register YES
     if (noIdx === noLines.length - 1){
-      // Turn the red box into a green "Yes" box feel (as requested)
+      // Turn into a YES green box response and register success
       noBox.style.background = "#1d8f3a";
-      noBox.textContent = yesLines[yesLines.length - 1]; // a "Yes green box response"
-      success(); // registers as final Yes hit
+      noBox.textContent = "Okay jk really last one promise.";
+      success();
       return;
     }
 
@@ -233,21 +311,25 @@
     moveElement(noBox);
   }
 
-  // Make both boxes dodge on hover (desktop) and on tap/click (mobile)
-  // Use pointerdown to beat the click event on mobile reliably.
-  const yesEvents = ["mouseenter", "pointerdown", "touchstart", "mousedown", "click"];
-  yesEvents.forEach(evt => {
-    yesBox.addEventListener(evt, handleYesAttempt, evt === "touchstart" ? { passive:false } : undefined);
-  });
+  // Event wiring:
+  // For YES:
+  // - Hover/pointerdown/touchstart => only cycles + dodges until final is armed.
+  // - Click => registers only when armed.
+  yesBox.addEventListener("mouseenter", yesAttemptNonClick);
+  yesBox.addEventListener("pointerdown", yesAttemptNonClick);
+  yesBox.addEventListener("touchstart", yesAttemptNonClick, { passive:false });
+  yesBox.addEventListener("mousedown", yesAttemptNonClick);
+  yesBox.addEventListener("click", yesFinalClick);
 
-  const noEvents = ["mouseenter", "pointerdown", "touchstart", "mousedown", "click"];
-  noEvents.forEach(evt => {
-    noBox.addEventListener(evt, handleNoAttempt, evt === "touchstart" ? { passive:false } : undefined);
-  });
+  // For NO: all attempts dodge/cycle, click doesn’t “select” no.
+  noBox.addEventListener("mouseenter", noAttempt);
+  noBox.addEventListener("pointerdown", noAttempt);
+  noBox.addEventListener("touchstart", noAttempt, { passive:false });
+  noBox.addEventListener("mousedown", noAttempt);
+  noBox.addEventListener("click", noAttempt);
 
-  // Keep dodging elements on screen after resize
+  // Keep escaped elements on screen after resize
   window.addEventListener("resize", () => {
-    // Only reposition if they’ve escaped layout (position fixed)
     if (yesBox.style.position === "fixed") moveElement(yesBox);
     if (noBox.style.position === "fixed") moveElement(noBox);
   });
